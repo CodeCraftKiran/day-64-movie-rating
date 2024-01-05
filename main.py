@@ -74,8 +74,13 @@ second_movie = Movie(
 
 @app.route("/")
 def home():
+    all_movie = db.session.execute(db.select(Movie).order_by(Movie.rating.desc())).scalars()
+    length = 1
+    for movie in all_movie:
+        movie.ranking = length
+        length += 1
+    db.session.commit()
     all_movie = db.session.execute(db.select(Movie).order_by(Movie.rating)).scalars()
-
     return render_template("index.html", all_movies=all_movie)
 
 
