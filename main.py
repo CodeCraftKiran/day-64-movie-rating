@@ -5,8 +5,9 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, FloatField
 from wtforms.validators import DataRequired
 import requests
-API_KEY = "462bfd4421932b508f5c73a771701540"
-auth_token= "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI0NjJiZmQ0NDIxOTMyYjUwOGY1YzczYTc3MTcwMTU0MCIsInN1YiI6IjY1OTUzNzU1ZDdhNzBhMTIyZTY5M2IzNSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.CCmlLX7JqsKCbwhfJpzCiWnzgWnV01lW1vfCNpC7YjE"
+import os
+
+auth_token = os.environ.get('AUTH_TOKEN')
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
@@ -42,35 +43,6 @@ class Movie(db.Model):
 with app.app_context():
     db.create_all()
 
-new_movie = Movie(
-    title="Phone Booth",
-    year=2002,
-    description="Publicist Stuart Shepard finds himself trapped in a phone booth, "
-                "pinned down by an extortionist's sniper rifle. Unable to leave or receive outside help, "
-                "Stuart's negotiation with the caller leads to a jaw-dropping climax.",
-    rating=7.3,
-    ranking=10,
-    review="My favourite character was the caller.",
-    img_url="https://image.tmdb.org/t/p/w500/tjrX2oWRCM3Tvarz38zlZM7Uc10.jpg"
-)
-second_movie = Movie(
-    title="Avatar The Way of Water",
-    year=2022,
-    description="Set more than a decade after the events of the first film, "
-                "learn the story of the Sully family (Jake, Neytiri, and their kids), "
-                "the trouble that follows them, the lengths they go to keep each other safe, "
-                "the battles they fight to stay alive, and the tragedies they endure.",
-    rating=7.3,
-    ranking=9,
-    review="I liked the water.",
-    img_url="https://image.tmdb.org/t/p/w500/t6HIqrRAclMCA60NsSmeqe9RmNV.jpg"
-)
-# with app.app_context():
-#     db.session.add(new_movie)
-#     db.session.add(second_movie)
-#     db.session.commit()
-
-
 
 @app.route("/")
 def home():
@@ -80,8 +52,20 @@ def home():
         movie.ranking = length
         length += 1
     db.session.commit()
-    all_movie = db.session.execute(db.select(Movie).order_by(Movie.rating)).scalars()
+    all_movie = db.session.execute(db.select(Movie).order_by(Movie.ranking.desc())).scalars()
     return render_template("index.html", all_movies=all_movie)
+
+
+# @app.route("/")
+# def home():
+#     result = db.session.execute(db.select(Movie).order_by(Movie.rating))
+#     all_movies = result.scalars().all() # convert ScalarResult to Python List
+#
+#     for i in range(len(all_movies)):
+#         all_movies[i].ranking = len(all_movies) - i
+#     db.session.commit()
+#
+#     return render_template("index.html", movies=all_movies)
 
 
 @app.route("/edit", methods=['GET', 'POST'])
@@ -99,14 +83,14 @@ def edit():
 
 @app.route('/delete')
 def delete():
-    id = request.args.get('id')
-    movie = db.get_or_404(Movie, id)
+    get_id = request.args.get('id')
+    movie = db.get_or_404(Movie, get_id)
     db.session.delete(movie)
     db.session.commit()
     return redirect(url_for('home'))
 
 
-@app.route('/add', methods=["GET",'POST'])
+@app.route('/add', methods=["GET", 'POST'])
 def add_movie():
     add_form = AddMovie()
     if add_form.validate_on_submit():
@@ -143,9 +127,10 @@ def movie_details():
                       review='give your own rating and review')
     db.session.add(new_movie)
     db.session.commit()
-    db_id = db.session.execute(db.select(Movie).where(Movie.title==data["title"])).scalar()
+    db_id = db.session.execute(db.select(Movie).where(Movie.title == data["title"])).scalar()
     print(url_for('edit', edit_id=db_id.id))
     return redirect(url_for('edit', edit_id=db_id.id))
+
 
 if __name__ == '__main__':
     app.run(debug=True)
